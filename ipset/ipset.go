@@ -79,8 +79,9 @@ func (s *IPSet) createHashSet(name string) error {
 	/*	out, err := exec.Command("/usr/bin/sudo",
 		ipsetPath, "create", name, s.HashType, "family", s.HashFamily, "hashsize", strconv.Itoa(s.HashSize),
 		"maxelem", strconv.Itoa(s.MaxElem), "timeout", strconv.Itoa(s.Timeout), "-exist").CombinedOutput()*/
-	out, err := exec.Command(ipsetPath, "create", name, s.HashType, "family", s.HashFamily, "hashsize", strconv.Itoa(s.HashSize),
-		"maxelem", strconv.Itoa(s.MaxElem), "timeout", strconv.Itoa(s.Timeout), "-exist").CombinedOutput()
+	out, err := exec.Command(ipsetPath, "create", name, s.HashType, "family", s.HashFamily, "hashsize",
+		strconv.Itoa(s.HashSize), "maxelem", strconv.Itoa(s.MaxElem), "timeout", strconv.Itoa(s.Timeout), "-exist",
+			"comment").CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("error creating ipset %s with type %s: %v (%s)", name, s.HashType, err, out)
 	}
@@ -118,11 +119,26 @@ func New(name string, hashtype string, p *Params) (*IPSet, error) {
 	}
 
 	s := IPSet{name, hashtype, p.HashFamily, p.HashSize, p.MaxElem, p.Timeout}
-	err := s.createHashSet(name)
-	if err != nil {
-		return nil, err
+	if _, err := s.List(); err != nil {
+		if err = s.createHashSet(name); err != nil {
+			return nil, err
+		}
 	}
+
 	return &s, nil
+}
+
+func Destroy(name string) error {
+	if err := initCheck(); err != nil {
+		return err
+	}
+
+	out, err := exec.Command(ipsetPath, "destroy", name).CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("error destroying set %s: %v (%s)", name, err, out)
+	}
+
+	return nil
 }
 
 // Refresh is used to to overwrite the set with the specified entries.
@@ -170,7 +186,8 @@ func (s *IPSet) Test(entry string) (bool, error) {
 // Add is used to add the specified entry to the set.
 // A timeout of 0 means that the entry will be stored permanently in the set.
 func (s *IPSet) Add(entry string, timeout int) error {
-	out, err := exec.Command(ipsetPath, "add", s.Name, entry, "timeout", strconv.Itoa(timeout), "-exist").CombinedOutput()
+	out, err := exec.Command(ipsetPath, "add", s.Name, entry, "timeout", strconv.Itoa(timeout),
+		"-exist").CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("error adding entry %s: %v (%s)", entry, err, out)
 	}
@@ -179,8 +196,13 @@ func (s *IPSet) Add(entry string, timeout int) error {
 
 // AddOption is used to add the specified entry to the set.
 // A timeout of 0 means that the entry will be stored permanently in the set.
-func (s *IPSet) AddOption(entry string, option string, timeout int) error {
-	out, err := exec.Command(ipsetPath, "add", s.Name, entry, option, "timeout", strconv.Itoa(timeout), "-exist").CombinedOutput()
+func (s *IPSet) AddOption(entry string, timeout int, option ...string) error {
+	entrySpec := []string{
+		"add", s.Name, entry, "timeout", strconv.Itoa(timeout), "-exist",
+	}
+
+	entrySpec = append(entrySpec, option...)
+	out, err := exec.Command(ipsetPath, entrySpec...).CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("error adding entry %s with option %s : %v (%s)", entry, option, err, out)
 	}
