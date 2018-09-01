@@ -25,8 +25,8 @@ import (
 	"strconv"
 	"strings"
 
-	log "github.com/sirupsen/logrus"
 	"github.com/coreos/go-semver/semver"
+	log "github.com/sirupsen/logrus"
 )
 
 const minIpsetVersion = "6.0.0"
@@ -80,8 +80,8 @@ func (s *IPSet) createHashSet(name string) error {
 		ipsetPath, "create", name, s.HashType, "family", s.HashFamily, "hashsize", strconv.Itoa(s.HashSize),
 		"maxelem", strconv.Itoa(s.MaxElem), "timeout", strconv.Itoa(s.Timeout), "-exist").CombinedOutput()*/
 	out, err := exec.Command(ipsetPath, "create", name, s.HashType, "family", s.HashFamily, "hashsize",
-		strconv.Itoa(s.HashSize), "maxelem", strconv.Itoa(s.MaxElem), "timeout", strconv.Itoa(s.Timeout), "-exist",
-			"comment").CombinedOutput()
+		strconv.Itoa(s.HashSize), "maxelem", strconv.Itoa(s.MaxElem), "timeout", strconv.Itoa(s.Timeout),
+		"-exist").CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("error creating ipset %s with type %s: %v (%s)", name, s.HashType, err, out)
 	}
